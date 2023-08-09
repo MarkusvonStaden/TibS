@@ -100,10 +100,11 @@ void BME_init_wrapper() {
     ESP_LOGD(TAG, "BME280 Set Sensor Mode Result: %d", rslt);
 }
 
-int8_t BME_force_read(struct bme280_data *comp_data) {
+int8_t BME_force_read(double *temperature, double *pressure, double *humidity) {
     int8_t   rslt = BME280_OK;
     uint32_t req_delay;
 
+    struct bme280_data     comp_data;
     struct bme280_settings settings;
 
     settings.osr_h = BME280_OVERSAMPLING_2X;
@@ -123,8 +124,12 @@ int8_t BME_force_read(struct bme280_data *comp_data) {
 
     dev.delay_us(req_delay, dev.intf_ptr);
 
-    rslt = bme280_get_sensor_data(BME280_ALL, comp_data, &dev);
+    rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
     ESP_LOGD(TAG, "BME280 Get Sensor Data Result: %d", rslt);
+
+    *temperature = comp_data.temperature;
+    *pressure = comp_data.pressure;
+    *humidity = comp_data.humidity;
 
     return rslt;
 }

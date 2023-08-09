@@ -5,14 +5,16 @@
 #include "driver/i2c.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#include "nvs_flash.h"
+#include "wifi.h"
+
+static const char *TAG = "MAIN";
 
 #define I2C_MASTER_NUM        I2C_NUM_0
 #define I2C_MASTER_SDA_IO     6
 #define I2C_MASTER_SCL_IO     7
 #define I2C_MASTER_FREQ_HZ    100000
 #define I2C_MASTER_TIMEOUT_MS 1000
-
-static const char *TAG = "MAIN";
 
 static esp_err_t i2c_master_init() {
     i2c_config_t i2c_config = {
@@ -74,11 +76,20 @@ esp_err_t VEML_I2C_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len) {
 }
 
 void app_main(void) {
+    // init WiFi
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+    ESP_LOGI(TAG, "Hello world!");
+    wifi_init_sta();
+
+    // init I2C
     int8_t rslt;
     i2c_master_init();
-    // BME_init_wrapper();
-
-    // struct bme280_data comp_data;
+    BME_init_wrapper();
 
     uint8_t data[2] = {0x00, 0x00};
     VEML_I2C_write(0x00, data, 2);
@@ -87,15 +98,13 @@ void app_main(void) {
     double   lux;
 
     while (1) {
-        // rslt = BME_force_read(&comp_data);
-        // ESP_LOGD(TAG, "Force read result: %d", rslt);
+        double temperature, humidity, pressure;
 
-        // ESP_LOGI(TAG, "Temperature: %f degC, Pressure: %f Pa, Humidity: %f", comp_data.temperature, comp_data.pressure, comp_data.humidity);
+        while (1) {
+            rslt = BME_force_read(&temperature, &pressure, &humidity);
+            ESP_LOGD(TAG, "Force read result: %d", rslt);
 
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        VEML_I2C_read(0x05, &value, 2);
-        lux = value * 0.27264;
-        // value = (data[1] << 8) | data[0];
-        ESP_LOGI(TAG, "Data: %d, Lux: %f", value, lux);
+            ESP_LOGI(TAG, "Temperature: %f degC, Pressure: %f Pa, Humidity: %f", comp_data.temperature, comp_data.pressure, comp_data.humidity);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
     }
-}
