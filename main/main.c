@@ -6,6 +6,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "veml.h"
 #include "wifi.h"
 
 static const char *TAG = "MAIN";
@@ -36,22 +37,22 @@ void app_main(void) {
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-    ESP_LOGI(TAG, "Hello world!");
     wifi_init_sta();
 
     // init I2C
-    int8_t rslt;
     i2c_master_init();
     BME_init_wrapper();
-  
-    double temperature, humidity, pressure;
+
+    VEML_init();
+
+    double white, visible, temperature, humidity, pressure;
 
     while (1) {
-        rslt = BME_force_read(&temperature, &pressure, &humidity);
-        ESP_LOGD(TAG, "Force read result: %d", rslt);
+        BME_force_read(&temperature, &pressure, &humidity);
 
-        send_data(&temperature, &humidity, &pressure);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        VEML_read(&white, &visible);
+
+        send_data(&temperature, &humidity, &pressure, &white, &visible);
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
-    ESP_LOGI(TAG, "Bye world!");
 }
