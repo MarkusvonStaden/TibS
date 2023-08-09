@@ -114,9 +114,9 @@ esp_err_t http_client_event_handler(esp_http_client_event_handle_t evt) {
     return ESP_OK;
 }
 
-void send_data(uint32_t* temperature, uint32_t* humidity, uint32_t* pressure) {
+void send_data(double* temperature, double* humidity, double* pressure) {
     char* data = malloc(100);
-    sprintf(data, "{\"temperature\": %lu, \"humidity\": %lu, \"pressure\": %lu}", *temperature, *humidity, *pressure);
+    sprintf(data, "{\"temperature\": %f, \"humidity\": %f, \"pressure\": %f}", *temperature, *humidity, *pressure);
     ESP_LOGI(TAG, "Sending data: %s", data);
 
     esp_http_client_config_t config = {
