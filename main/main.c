@@ -43,7 +43,7 @@ void app_main(void) {
     int8_t rslt;
     i2c_master_init();
     BME_init_wrapper();
-
+  
     double temperature, humidity, pressure;
 
     while (1) {
