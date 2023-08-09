@@ -31,13 +31,13 @@ void app_main(void) {
     i2c_master_init();
     BME_init_wrapper();
 
-    struct bme280_data comp_data;
+    double temperature, pressure, humidity;
 
     while (1) {
-        rslt = BME_force_read(&comp_data);
+        rslt = BME_force_read(&temperature, &pressure, &humidity);
         ESP_LOGD(TAG, "Force read result: %d", rslt);
 
-        ESP_LOGI(TAG, "Temperature: %f degC, Pressure: %f Pa, Humidity: %f", comp_data.temperature, comp_data.pressure, comp_data.humidity);
+        ESP_LOGI(TAG, "Temperature: %f degC, Pressure: %f Pa, Humidity: %f", temperature, pressure, humidity);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
