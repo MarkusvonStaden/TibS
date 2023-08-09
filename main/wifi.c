@@ -12,6 +12,8 @@
 #define WIFI_SSID     "Heimatwinkel WG"
 #define WIFI_PASSWORD "H4w4iiPi$$4"
 
+#define VERSION "0.0.1"
+
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
@@ -114,9 +116,10 @@ esp_err_t http_client_event_handler(esp_http_client_event_handle_t evt) {
     return ESP_OK;
 }
 
-void send_data(double* temperature, double* humidity, double* pressure) {
-    char* data = malloc(100);
-    sprintf(data, "{\"temperature\": %f, \"humidity\": %f, \"pressure\": %f}", *temperature, *humidity, *pressure);
+void send_data(double* temperature, double* humidity, double* pressure, double* white, double* visible) {
+    char* data = malloc(150);
+    sprintf(data, "{\"temperature\": %f, \"humidity\": %f, \"pressure\": %f, \"white\": %f, \"visible\": %f}",
+            *temperature, *humidity, *pressure, *white, *visible);
     ESP_LOGI(TAG, "Sending data: %s", data);
 
     esp_http_client_config_t config = {
@@ -128,6 +131,7 @@ void send_data(double* temperature, double* humidity, double* pressure) {
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
     esp_http_client_set_header(client, "Content-Type", "application/json");
+    esp_http_client_set_header(client, "Version", VERSION);
     esp_http_client_set_post_field(client, data, strlen(data));
 
     esp_err_t err = esp_http_client_perform(client);
