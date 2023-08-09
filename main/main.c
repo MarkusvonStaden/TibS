@@ -5,14 +5,16 @@
 #include "driver/i2c.h"
 #include "esp_err.h"
 #include "esp_log.h"
+#include "nvs_flash.h"
+#include "wifi.h"
+
+static const char *TAG = "MAIN";
 
 #define I2C_MASTER_NUM        I2C_NUM_0
 #define I2C_MASTER_SDA_IO     6
 #define I2C_MASTER_SCL_IO     7
 #define I2C_MASTER_FREQ_HZ    100000
 #define I2C_MASTER_TIMEOUT_MS 1000
-
-static const char *TAG = "MAIN";
 
 static esp_err_t i2c_master_init() {
     i2c_config_t i2c_config = {
@@ -27,17 +29,29 @@ static esp_err_t i2c_master_init() {
 }
 
 void app_main(void) {
+    // init WiFi
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+    ESP_LOGI(TAG, "Hello world!");
+    wifi_init_sta();
+
+    // init I2C
     int8_t rslt;
     i2c_master_init();
     BME_init_wrapper();
-
-    double temperature, pressure, humidity;
+  
+    double temperature, humidity, pressure;
 
     while (1) {
         rslt = BME_force_read(&temperature, &pressure, &humidity);
         ESP_LOGD(TAG, "Force read result: %d", rslt);
 
-        ESP_LOGI(TAG, "Temperature: %f degC, Pressure: %f Pa, Humidity: %f", temperature, pressure, humidity);
+        send_data(&temperature, &humidity, &pressure);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
+    ESP_LOGI(TAG, "Bye world!");
 }
