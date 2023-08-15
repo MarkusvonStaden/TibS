@@ -1,29 +1,68 @@
+#include "wifi.h"
+
 #include <string.h>
 
+#include "cJSON.h"
 #include "esp_event.h"
 #include "esp_http_client.h"
+#include "esp_https_ota.h"
 #include "esp_log.h"
+#include "esp_ota_ops.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
+#include "nvs.h"
+#include "nvs_flash.h"
 
 #define WIFI_SSID     "Heimatwinkel WG"
 #define WIFI_PASSWORD "H4w4iiPi$$4"
 
-#define VERSION "0.0.1"
+#define VERSION "1.2.5"
 
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
 #define MAXIMUM_RETRY 5
 
-#define URL "http://192.168.1.84/api/measurements"
+#define URL          "http://192.168.1.84/api/measurements"
+#define FIRMWARE_URL "http://192.168.1.84/api/firmwareupdate"
+#define BUFFSIZE     1024
 
 static EventGroupHandle_t s_wifi_event_group;
 static int                s_retry_num = 0;
 static const char*        TAG = "WiFi";
+
+void getUpdate(void);
+
+esp_err_t save_limits(const Limits* limits) {
+    // Initialisiere den NVS
+    esp_err_t err;
+    // Öffne den NVS-Handle
+    nvs_handle_t my_handle;
+    err = nvs_open("storage", NVS_READWRITE, &my_handle);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    // Speichern Sie den Struct
+    err = nvs_set_blob(my_handle, "limits", limits, sizeof(Limits));
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    // Commit
+    err = nvs_commit(my_handle);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    // Schließen
+    nvs_close(my_handle);
+    ESP_LOGI(TAG, "Limits saved to NVS");
+    return ESP_OK;
+}
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                           int32_t event_id, void* event_data) {
@@ -107,7 +146,57 @@ void wifi_init_sta(void) {
 esp_err_t http_client_event_handler(esp_http_client_event_handle_t evt) {
     switch (evt->event_id) {
         case HTTP_EVENT_ON_DATA:
-            printf("HTTP_EVENT_ON_DATA: %.*s\n", evt->data_len, (char*)evt->data);
+            Limits limits = {0};
+
+            cJSON* root = cJSON_Parse(evt->data);
+            cJSON* updateAvailable = cJSON_GetObjectItem(root, "updateAvailable");
+            if (updateAvailable) {
+                if (cJSON_IsTrue(updateAvailable)) {
+                    ESP_LOGI(TAG, "Update available");
+                    getUpdate();
+                }
+            }
+
+            cJSON* data_limits = cJSON_GetObjectItem(root, "limits");
+
+            cJSON* moisture = cJSON_GetObjectItem(data_limits, "moisture");
+            if (moisture) {
+                limits.moisture.min = cJSON_GetArrayItem(moisture, 0)->valuedouble;
+                limits.moisture.max = cJSON_GetArrayItem(moisture, 1)->valuedouble;
+            }
+
+            cJSON* temperature = cJSON_GetObjectItem(data_limits, "temperature");
+            if (temperature) {
+                limits.temperature.min = cJSON_GetArrayItem(temperature, 0)->valuedouble;
+                limits.temperature.max = cJSON_GetArrayItem(temperature, 1)->valuedouble;
+            }
+
+            cJSON* humidity = cJSON_GetObjectItem(data_limits, "humidity");
+            if (humidity) {
+                limits.humidity.min = cJSON_GetArrayItem(humidity, 0)->valuedouble;
+                limits.humidity.max = cJSON_GetArrayItem(humidity, 1)->valuedouble;
+            }
+
+            cJSON* pressure = cJSON_GetObjectItem(data_limits, "pressure");
+            if (pressure) {
+                limits.pressure.min = cJSON_GetArrayItem(pressure, 0)->valuedouble;
+                limits.pressure.max = cJSON_GetArrayItem(pressure, 1)->valuedouble;
+            }
+
+            cJSON* white = cJSON_GetObjectItem(data_limits, "white");
+            if (white) {
+                limits.white.min = cJSON_GetArrayItem(white, 0)->valuedouble;
+                limits.white.max = cJSON_GetArrayItem(white, 1)->valuedouble;
+            }
+
+            cJSON* visible = cJSON_GetObjectItem(data_limits, "visible");
+            if (visible) {
+                limits.visible.min = cJSON_GetArrayItem(visible, 0)->valuedouble;
+                limits.visible.max = cJSON_GetArrayItem(visible, 1)->valuedouble;
+            }
+
+            cJSON_Delete(root);
+            ESP_ERROR_CHECK_WITHOUT_ABORT(save_limits(&limits));
             break;
 
         default:
@@ -116,10 +205,10 @@ esp_err_t http_client_event_handler(esp_http_client_event_handle_t evt) {
     return ESP_OK;
 }
 
-void send_data(double* temperature, double* humidity, double* pressure, double* white, double* visible) {
+void send_data(double* moisture, double* temperature, double* humidity, double* pressure, double* white, double* visible) {
     char* data = malloc(150);
-    sprintf(data, "{\"temperature\": %f, \"humidity\": %f, \"pressure\": %f, \"white\": %f, \"visible\": %f}",
-            *temperature, *humidity, *pressure, *white, *visible);
+    sprintf(data, "{\"moisture\":%.2f,\"temperature\":%.2f,\"humidity\":%.2f,\"pressure\":%.2f,\"white\":%.2f,\"visible\":%.2f}",
+            *moisture, *temperature, *humidity, *pressure, *white, *visible);
     ESP_LOGI(TAG, "Sending data: %s", data);
 
     esp_http_client_config_t config = {
@@ -145,4 +234,24 @@ void send_data(double* temperature, double* humidity, double* pressure, double* 
     esp_http_client_cleanup(client);
 
     free(data);
+}
+
+void getUpdate(void) {
+    esp_http_client_config_t config = {
+        .url = FIRMWARE_URL,
+        .event_handler = http_client_event_handler,
+        .keep_alive_enable = true,
+    };
+
+    esp_https_ota_config_t ota_config = {
+        .http_config = &config,
+    };
+
+    esp_err_t ret = esp_https_ota(&ota_config);
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "OTA OK, restarting...");
+        esp_restart();
+    } else {
+        ESP_LOGE(TAG, "OTA failed...");
+    }
 }
