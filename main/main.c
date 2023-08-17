@@ -22,7 +22,7 @@ static const char *VERSION = "1.0.4";
 #define I2C_MASTER_TIMEOUT_MS 1000
 
 #define LED_GPIO           3
-#define SLEEP_TIME_SECONDS 10
+#define SLEEP_TIME_SECONDS 3600
 
 // Function to initialize I2C master
 static esp_err_t i2c_master_init() {
