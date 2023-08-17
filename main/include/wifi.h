@@ -17,5 +17,5 @@ typedef struct {
 } Limits;
 
 void wifi_init_sta(void);
-void send_data(double* moisture, double* temperature, double* humidity, double* pressure, double* white, double* visible);
+void send_data(double* moisture, double* temperature, double* humidity, double* pressure, double* white, double* visible, char* version);
 #endif  // __WIFI_H__

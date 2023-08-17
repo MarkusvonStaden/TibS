@@ -17,14 +17,17 @@
 #include "nvs_flash.h"
 
 // Constants and Macros
-#define WIFI_SSID          "Heimatwinkel WG"
-#define WIFI_PASSWORD      "H4w4iiPi$$4"
-#define VERSION            "1.2.5"
+#define WIFI_SSID     "Heimatwinkel WG"
+#define WIFI_PASSWORD "H4w4iiPi$$4"
+
+#define SLEEP_TIME_SECONDS 10
+
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
+#define MESSAGE_SENT_BIT   BIT0
 #define MAXIMUM_RETRY      5
-#define URL                "http://192.168.1.84/api/measurements"
-#define FIRMWARE_URL       "http://192.168.1.84/api/firmwareupdate"
+#define URL                "http://e795af42-f489-4f54-8ff6-ade24852e1da.ul.bw-cloud-instance.org/api/measurements"
+#define FIRMWARE_URL       "http://e795af42-f489-4f54-8ff6-ade24852e1da.ul.bw-cloud-instance.org/api/firmwareupdate"
 #define BUFFSIZE           1024
 
 static const char*        TAG = "WiFi";
@@ -36,7 +39,6 @@ void getUpdate(void);
 
 // Function to save limits
 esp_err_t save_limits(const Limits* limits) {
-    // Initialize the NVS
     esp_err_t err;
 
     // Open the NVS handle
@@ -107,7 +109,9 @@ void wifi_init_sta(void) {
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_LOGI(TAG, "wifi_init_sta finished.");
+    ESP_LOGI(TAG, "wifi_init_sta finished. Wait for connection");
+    xEventGroupWaitBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT, pdFALSE, pdFALSE, portMAX_DELAY);
+    ESP_LOGI(TAG, "Connected to AP");
 }
 
 // Event handler for HTTP events
@@ -117,13 +121,6 @@ esp_err_t http_client_event_handler(esp_http_client_event_handle_t evt) {
             Limits limits = {0};
 
             cJSON* root = cJSON_Parse(evt->data);
-            cJSON* updateAvailable = cJSON_GetObjectItem(root, "updateAvailable");
-            if (updateAvailable) {
-                if (cJSON_IsTrue(updateAvailable)) {
-                    ESP_LOGI(TAG, "Update available");
-                    getUpdate();
-                }
-            }
 
             cJSON* data_limits = cJSON_GetObjectItem(root, "limits");
 
@@ -163,6 +160,16 @@ esp_err_t http_client_event_handler(esp_http_client_event_handle_t evt) {
                 limits.visible.max = cJSON_GetArrayItem(visible, 1)->valuedouble;
             }
 
+            cJSON* updateAvailable = cJSON_GetObjectItem(root, "updateAvailable");
+            if (updateAvailable) {
+                if (cJSON_IsTrue(updateAvailable)) {
+                    ESP_LOGI(TAG, "Update available");
+                    getUpdate();
+                } else {
+                    ESP_LOGI(TAG, "No update available, going to sleep");
+                }
+            }
+
             cJSON_Delete(root);
             ESP_ERROR_CHECK_WITHOUT_ABORT(save_limits(&limits));
             break;
@@ -174,7 +181,7 @@ esp_err_t http_client_event_handler(esp_http_client_event_handle_t evt) {
 }
 
 // Function to send data to the server
-void send_data(double* moisture, double* temperature, double* humidity, double* pressure, double* white, double* visible) {
+void send_data(double* moisture, double* temperature, double* humidity, double* pressure, double* white, double* visible, char* version) {
     char* data = malloc(150);
     sprintf(data, "{\"moisture\":%.2f,\"temperature\":%.2f,\"humidity\":%.2f,\"pressure\":%.2f,\"white\":%.2f,\"visible\":%.2f}",
             *moisture, *temperature, *humidity, *pressure, *white, *visible);
@@ -189,7 +196,7 @@ void send_data(double* moisture, double* temperature, double* humidity, double* 
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
     esp_http_client_set_header(client, "Content-Type", "application/json");
-    esp_http_client_set_header(client, "Version", VERSION);
+    esp_http_client_set_header(client, "Version", version);
     esp_http_client_set_post_field(client, data, strlen(data));
 
     esp_err_t err = esp_http_client_perform(client);
@@ -201,7 +208,6 @@ void send_data(double* moisture, double* temperature, double* humidity, double* 
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
     }
     esp_http_client_cleanup(client);
-
     free(data);
 }
 

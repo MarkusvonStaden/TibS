@@ -14,7 +14,7 @@
 
 // Constants and Macros
 static const char *TAG = "MAIN";
-
+static const char *VERSION = "1.0.4";
 #define I2C_MASTER_NUM        I2C_NUM_0
 #define I2C_MASTER_SDA_IO     6
 #define I2C_MASTER_SCL_IO     7
@@ -22,7 +22,7 @@ static const char *TAG = "MAIN";
 #define I2C_MASTER_TIMEOUT_MS 1000
 
 #define LED_GPIO           3
-#define SLEEP_TIME_SECONDS 60
+#define SLEEP_TIME_SECONDS 10
 
 // Function to initialize I2C master
 static esp_err_t i2c_master_init() {
@@ -66,7 +66,11 @@ void evaluate_limits(Limits *limits, double moisture, double temperature, double
     if (white < limits->white.min || white > limits->white.max) alert = 1;
     if (visible < limits->visible.min || visible > limits->visible.max) alert = 1;
 
+    ESP_LOGI(TAG, "Alert: %d", alert);
+
     gpio_set_level(LED_GPIO, alert);
+    ESP_ERROR_CHECK(gpio_hold_en(LED_GPIO));
+    gpio_deep_sleep_hold_en();
 }
 
 // Main application function
@@ -89,27 +93,24 @@ void app_main(void) {
     // Initialize other components
     VEML_init();
     moisture_init();
+
+    gpio_deep_sleep_hold_dis();
+    gpio_hold_dis(LED_GPIO);
     gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
 
     double moisture = 50, white, visible, temperature, humidity, pressure;
 
-    while (1) {
-        ESP_LOGI(TAG, "Updating sensor data");
-        BME_force_read(&temperature, &pressure, &humidity);
-        gpio_set_level(LED_GPIO, 0);
-        VEML_read(&white, &visible);
-        moisture_read(&moisture);
+    BME_force_read(&temperature, &pressure, &humidity);
+    moisture_read(&moisture);
+    gpio_set_level(LED_GPIO, 0);
+    VEML_read(&white, &visible);
 
-        send_data(&moisture, &temperature, &humidity, &pressure, &white, &visible);
-        ESP_ERROR_CHECK_WITHOUT_ABORT(load_limits(&limits));
+    send_data(&moisture, &temperature, &humidity, &pressure, &white, &visible, VERSION);
+    load_limits(&limits);
 
-        evaluate_limits(&limits, moisture, temperature, humidity, pressure, white, visible);
+    evaluate_limits(&limits, moisture, temperature, humidity, pressure, white, visible);
 
-        vTaskDelay(10000 / portTICK_PERIOD_MS);
-    }
-
-    // Sleeping code (currently commented out)
-    // vTaskDelay(1000 / portTICK_PERIOD_MS);
-    // esp_sleep_enable_timer_wakeup(SLEEP_TIME_SECONDS * 1000000LL);
-    // esp_deep_sleep_start();
+    // Sleeping code
+    esp_sleep_enable_timer_wakeup(SLEEP_TIME_SECONDS * 1000000LL);
+    esp_deep_sleep_start();
 }
