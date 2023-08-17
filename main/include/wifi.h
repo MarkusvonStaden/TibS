@@ -2,6 +2,11 @@
 #ifndef __WIFI_H__
 #define __WIFI_H__
 
+#define WIFI_SSID     "TibS"
+#define WIFI_PASSWORD "Projekt!"
+
+#define BASE_URL "http://e795af42-f489-4f54-8ff6-ade24852e1da.ul.bw-cloud-instance.org"
+
 typedef struct {
     double min;
     double max;

@@ -17,18 +17,17 @@
 #include "nvs_flash.h"
 
 // Constants and Macros
-#define WIFI_SSID     "Heimatwinkel WG"
-#define WIFI_PASSWORD "H4w4iiPi$$4"
-
 #define SLEEP_TIME_SECONDS 10
 
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 #define MESSAGE_SENT_BIT   BIT0
 #define MAXIMUM_RETRY      5
-#define URL                "http://e795af42-f489-4f54-8ff6-ade24852e1da.ul.bw-cloud-instance.org/api/measurements"
-#define FIRMWARE_URL       "http://e795af42-f489-4f54-8ff6-ade24852e1da.ul.bw-cloud-instance.org/api/firmwareupdate"
-#define BUFFSIZE           1024
+
+#define URL          BASE_URL "/api/measurements"
+#define FIRMWARE_URL BASE_URL "/api/firmwareupdate"
+
+#define BUFFSIZE 1024
 
 static const char*        TAG = "WiFi";
 static EventGroupHandle_t s_wifi_event_group;
