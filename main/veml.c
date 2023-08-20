@@ -8,8 +8,10 @@
 
 // Constants and Macros
 #define I2C_MASTER_NUM I2C_NUM_0
-#define MULTIPLIER     0.27264
+#define MULTIPLIER     0.00213
 #define VEML_DEV_ADDR  0x10
+#define VEML_DG_X2     = (0x01 << 4)
+#define VEML_GAIN_X4   = (0x03 << 2)
 
 static const char *TAG = "VEML";
 
@@ -54,7 +56,7 @@ esp_err_t VEML_I2C_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len) {
 
 // Initialize VEML sensor
 esp_err_t VEML_init() {
-    uint8_t data[2] = {0x00, 0x00};
+    uint8_t data[2] = {0x00, 0b00011101};
     return VEML_I2C_write(0x00, data, 2);
 }
 
