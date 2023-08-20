@@ -11,8 +11,8 @@
 
 ## How to install updates
 
-1. Change the Version in 'main.c' to your liking.
+1. Change the Version in `main.c` to your liking.
 2. Compile the Code
-3. Upload the '.bin' vie the Webinterface.
+3. Upload the `.bin` vie the Webinterface.
    **_Important note:_** The Version you enter on the Webinterface has to match the Version in the Code.
 4. The firmware will be updated the next time the ESP32 connects to the server.
