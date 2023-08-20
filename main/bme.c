@@ -1,5 +1,7 @@
 #include "bme.h"
 
+#include <rom/ets_sys.h>
+
 #include "bme280.h"
 #include "driver/i2c.h"
 #include "esp_err.h"
@@ -69,7 +71,7 @@ int8_t BME280_I2C_bus_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t cnt, vo
 
 // Delay function for the BME280
 void BME280_delay_usek(uint32_t msek, void *interface) {
-    vTaskDelay((msek / 1000) / portTICK_PERIOD_MS);
+    ets_delay_us(msek);
 }
 
 // Initialize BME280 sensor
@@ -78,10 +80,10 @@ void BME_init_wrapper() {
     struct bme280_settings settings;
 
     rslt = bme280_init(&dev);
-    ESP_LOGD(TAG, "BME280 Init Result: %d", rslt);
+    ESP_LOGI(TAG, "BME280 Init Result: %d", rslt);
 
     rslt = bme280_get_sensor_settings(&settings, &dev);
-    ESP_LOGD(TAG, "BME280 Get Sensor Settings Result: %d", rslt);
+    ESP_LOGI(TAG, "BME280 Get Sensor Settings Result: %d", rslt);
 
     settings.osr_h = BME280_OVERSAMPLING_1X;
     settings.osr_p = BME280_OVERSAMPLING_1X;
@@ -90,10 +92,10 @@ void BME_init_wrapper() {
     settings.standby_time = BME280_STANDBY_TIME_0_5_MS;
 
     rslt = bme280_set_sensor_settings(BME280_SEL_ALL_SETTINGS, &settings, &dev);
-    ESP_LOGD(TAG, "BME280 Set Sensor Settings Result: %d", rslt);
+    ESP_LOGI(TAG, "BME280 Set Sensor Settings Result: %d", rslt);
 
     rslt = bme280_set_sensor_mode(BME280_POWERMODE_NORMAL, &dev);
-    ESP_LOGD(TAG, "BME280 Set Sensor Mode Result: %d", rslt);
+    ESP_LOGI(TAG, "BME280 Set Sensor Mode Result: %d", rslt);
 }
 
 // Read data from BME280 sensor
@@ -110,18 +112,18 @@ int8_t BME_force_read(double *temperature, double *pressure, double *humidity) {
     uint8_t settings_sel = BME280_SEL_OSR_TEMP | BME280_SEL_OSR_HUM | BME280_SEL_OSR_PRESS;
 
     rslt = bme280_set_sensor_settings(settings_sel, &settings, &dev);
-    ESP_LOGD(TAG, "BME280 Set Sensor Settings Result: %d", rslt);
+    ESP_LOGI(TAG, "BME280 Set Sensor Settings Result: %d", rslt);
 
     rslt = bme280_cal_meas_delay(&req_delay, &settings);
-    ESP_LOGD(TAG, "BME280 Cal Meas Delay Result: %d", rslt);
+    ESP_LOGI(TAG, "BME280 Cal Meas Delay Result: %d", rslt);
 
     rslt = bme280_set_sensor_mode(BME280_POWERMODE_FORCED, &dev);
-    ESP_LOGD(TAG, "BME280 Set Sensor Mode Result: %d", rslt);
+    ESP_LOGI(TAG, "BME280 Set Sensor Mode Result: %d", rslt);
 
     dev.delay_us(req_delay, dev.intf_ptr);
 
     rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
-    ESP_LOGD(TAG, "BME280 Get Sensor Data Result: %d", rslt);
+    ESP_LOGI(TAG, "BME280 Get Sensor Data Result: %d", rslt);
 
     *temperature = comp_data.temperature;
     *pressure = comp_data.pressure;
