@@ -7,6 +7,16 @@
 3. Edit the WiFi credentials in `WiFi.h` to match your network.
 4. Edit the URL in `WiFi.h` to match your server.
 5. Compile and Upload the code to your ESP32 (C3).
+
+   - To do so, connect the PCB using the integrated JTAG interface.
+     | USB | PCB |
+     |-----|-----|
+     | VCC | 2 |
+     | D+ | 7 |
+     | D- | 8 |
+     | GND | 14 |
+   - You might have to put the Controller into download mode. To do so, hold the BOOT_SELECT Button, while pressing the RESET Button. Then release the RESET Button and then the BOOT_SELECT Button.
+
 6. Enjoy!
 
 ## How to install updates
