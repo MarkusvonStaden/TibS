@@ -182,7 +182,7 @@ esp_err_t http_client_event_handler(esp_http_client_event_handle_t evt) {
 // Function to send data to the server
 void send_data(double* moisture, double* temperature, double* humidity, double* pressure, double* white, double* visible, char* version) {
     char* data = malloc(150);
-    sprintf(data, "{\"moisture\":%.2f,\"temperature\":%.2f,\"humidity\":%.2f,\"pressure\":%.2f,\"white\":%.2f,\"visible\":%.2f}",
+    sprintf(data, "{\"moisture\":%.2f,\"temperature\":%.2f,\"humidity\":%.2f,\"pressure\":%.2f,\"white\":%.5f,\"visible\":%.5f}",
             *moisture, *temperature, *humidity, *pressure, *white, *visible);
     ESP_LOGI(TAG, "Sending data: %s", data);
 
