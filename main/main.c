@@ -14,7 +14,7 @@
 
 // Constants and Macros
 static const char *TAG = "MAIN";
-static const char *VERSION = "1.0.9";
+static const char *VERSION = "1.1.0";
 #define I2C_MASTER_NUM        I2C_NUM_0
 #define I2C_MASTER_SDA_IO     6
 #define I2C_MASTER_SCL_IO     7
@@ -98,12 +98,13 @@ void app_main(void) {
     gpio_hold_dis(LED_GPIO);
     gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
 
+    // Pull Pin to Ground as virtual Ground for debugging
     gpio_set_direction(1, GPIO_MODE_OUTPUT);
     gpio_set_level(1, 0);
 
     double moisture = 50, white, visible, temperature, humidity, pressure;
 
-    // BME_force_read(&temperature, &pressure, &humidity);
+    BME_force_read(&temperature, &pressure, &humidity);
     moisture_read(&moisture);
     gpio_set_level(LED_GPIO, 0);
     VEML_read(&white, &visible);
