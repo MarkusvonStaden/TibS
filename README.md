@@ -16,8 +16,13 @@
      | D- | 8 |
      | GND | 14 |
    - You might have to put the Controller into download mode. To do so, hold the BOOT_SELECT Button, while pressing the RESET Button. Then release the RESET Button and then the BOOT_SELECT Button.
+6. If this is the first time connecting, you will have to enter the WiFi credentials.
 
-6. Enjoy!
+   1. Connect to the WiFi network `TibSense`
+   2. Open a browser and navigate to `192.168.4.1`
+   3. Enter the WiFi credentials and click `Save`
+
+7. Enjoy!
 
 ## How to install updates
 
